@@ -26,19 +26,17 @@
 
 ### Static settings, overridable by TARGET_* environment variables
 
-ZPOOL=${TARGET_ZPOOL:-rpool}
-TARGETDIST=${TARGET_DIST:-buster}
-
 PARTBIOS=${TARGET_PARTBIOS:-1}
 PARTEFI=${TARGET_PARTEFI:-2}
 PARTZFS=${TARGET_PARTZFS:-3}
 
 SIZESWAP=${TARGET_SIZESWAP:-2G}
-SIZETMP=${TARGET_SIZETMP:-3G}
-SIZEVARTMP=${TARGET_VARTMP:-3G}
 
 NEWHOST=${TARGET_HOSTNAME}
 NEWDNS=${TARGET_DNS:-8.8.8.8 8.8.4.4}
+
+### import os-release
+. /etc/os-release
 
 ### User settings
 
@@ -132,7 +130,7 @@ if [ -d /sys/firmware/efi ]; then
 fi
 
 whiptail --backtitle "$0" --title "Confirmation" \
-	--yesno "\nAre you sure to destroy ZFS pool '$ZPOOL' (if existing), wipe all data of disks '${DISKS[*]}' and create a RAID '$RAIDLEVEL'?\n" 20 74
+	--yesno "\nAre you sure to destroy ZFS pool 'rpool' (if existing), wipe all data of disks '${DISKS[*]}' and create a RAID '$RAIDLEVEL'?\n" 20 74
 
 if [ $? -ne 0 ]; then
 	exit 1
@@ -145,37 +143,6 @@ if [ "$(hostid | cut -b-6)" == "007f01" ]; then
 	dd if=/dev/urandom of=/etc/hostid bs=1 count=4
 fi
 
-DEBRELEASE=$(head -n1 /etc/debian_version)
-case $DEBRELEASE in
-	9*)
-		echo "deb http://deb.debian.org/debian/ stretch contrib non-free" >/etc/apt/sources.list.d/contrib-non-free.list
-		test -f /var/lib/apt/lists/deb.debian.org_debian_dists_stretch_non-free_binary-amd64_Packages || apt-get update
-		if [ ! -d /usr/share/doc/zfs-dkms ]; then NEED_PACKAGES+=(zfs-dkms); fi
-		;;
-	10*)
-		echo "deb http://deb.debian.org/debian/ buster contrib non-free" >/etc/apt/sources.list.d/contrib-non-free.list
-		test -f /var/lib/apt/lists/deb.debian.org_debian_dists_buster_non-free_binary-amd64_Packages || apt-get update
-		if [ ! -d /usr/share/doc/zfs-dkms ]; then NEED_PACKAGES+=(zfs-dkms); fi
-		;;
-	*)
-		echo "Unsupported Debian Live CD release" >&2
-		exit 1
-		;;
-esac
-if [ ! -f /sbin/zpool ]; then NEED_PACKAGES+=(zfsutils-linux); fi
-if [ ! -f /usr/sbin/debootstrap ]; then NEED_PACKAGES+=(debootstrap); fi
-if [ ! -f /sbin/sgdisk ]; then NEED_PACKAGES+=(gdisk); fi
-if [ ! -f /sbin/mkdosfs ]; then NEED_PACKAGES+=(dosfstools); fi
-echo "Need packages: ${NEED_PACKAGES[@]}"
-if [ -n "${NEED_PACKAGES[*]}" ]; then DEBIAN_FRONTEND=noninteractive apt-get install --yes "${NEED_PACKAGES[@]}"; fi
-
-modprobe zfs
-if [ $? -ne 0 ]; then
-	echo "Unable to load ZFS kernel module" >&2
-	exit 1
-fi
-test -d /proc/spl/kstat/zfs/$ZPOOL && zpool destroy $ZPOOL
-
 for DISK in "${DISKS[@]}"; do
 	echo -e "\nPartitioning disk $DISK"
 
@@ -186,56 +153,58 @@ for DISK in "${DISKS[@]}"; do
                    -n$PARTZFS:0:0        -t$PARTZFS:BF01 $DISK
 done
 
-sleep 2
+# add contrib non-free and backports top apt lists
+echo "deb http://deb.debian.org/debian $VERSION_CODENAME contrib non-free" > /etc/apt/sources.list.d/$VERSION_CODENAME-contrib-non-free.list
+echo "deb http://deb.debian.org/debian $VERSION_CODENAME-backports main contrib non-free" > /etc/apt/sources.list.d/$VERSION_CODENAME-backports.list
+echo "Package: libnvpair3linux libpam-zfs libuutil3linux libzfs4linux libzfsbootenv1linux libzfslinux-dev libzpool4linux \
+python3-pyzfs pyzfs-doc spl spl-dkms zfs-dkms zfs-dracut zfs-initramfs zfs-test zfs-zed zfsutils-linux" > /etc/apt/preferences.d/990_zfs
+echo "Pin: release n=$VERSION_CODENAME-backports" >> /etc/apt/preferences.d/990_zfs
+echo "Pin-Priority: 990" >> /etc/apt/preferences.d/990_zfs
 
-zpool create -f -o ashift=12 -o altroot=/target -O atime=off -O mountpoint=none $ZPOOL $RAIDDEF
+# install and build zfs kernel module
+apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install --yes zfs-dkms zfsutils-linux debootstrap gdisk dosfstools
+
+modprobe zfs
+
 if [ $? -ne 0 ]; then
-	echo "Unable to create zpool '$ZPOOL'" >&2
+	echo "Unable to load ZFS kernel module" >&2
 	exit 1
 fi
 
-zfs set compression=lz4 $ZPOOL
-# The two properties below improve performance but reduce compatibility with non-Linux ZFS implementations
-# Commented out by default
-#zfs set xattr=sa $ZPOOL
-#zfs set acltype=posixacl $ZPOOL
+zpool create -f -o ashift=12 -O atime=off -O mountpoint=none rpool $RAIDDEF
 
-zfs create $ZPOOL/ROOT
-zfs create -o mountpoint=/ $ZPOOL/ROOT/debian-$TARGETDIST
-zpool set bootfs=$ZPOOL/ROOT/debian-$TARGETDIST $ZPOOL
+if [ $? -ne 0 ]; then
+	echo "Unable to create zpool 'rpool'" >&2
+	exit 1
+fi
 
-zfs create -o mountpoint=/tmp -o setuid=off -o exec=off -o devices=off -o com.sun:auto-snapshot=false -o quota=$SIZETMP $ZPOOL/tmp
-chmod 1777 /target/tmp
+# create root
+zfs create -p -o mountpoint=/mnt rpool/ROOT/debian
+zfs create -o mountpoint=/mnt/tmp -o setuid=off -o exec=off -o devices=off rpool/tmp && chmod 1777 /mnt/tmp
+zfs create -o mountpoint=/mnt/var rpool/var
+zfs create rpool/var/tmp && chmod 1777 /mnt/var/tmp
+zfs create rpool/var/log
+zfs create rpool/var/lib
 
-# /var needs to be mounted via fstab, the ZFS mount script runs too late during boot
-zfs create -o mountpoint=legacy $ZPOOL/var
-mkdir -v /target/var
-mount -t zfs $ZPOOL/var /target/var
+zfs create -V 2G -b "$(getconf PAGESIZE)" -o primarycache=metadata -o logbias=throughput -o sync=always rpool/swap
+# sometimes needed to wait for /dev/zvol/rpool/swap to appear
+sleep 3
 
-# /var/tmp needs to be mounted via fstab, the ZFS mount script runs too late during boot
-zfs create -o mountpoint=legacy -o com.sun:auto-snapshot=false -o quota=$SIZEVARTMP $ZPOOL/var/tmp
-mkdir -v -m 1777 /target/var/tmp
-mount -t zfs $ZPOOL/var/tmp /target/var/tmp
-chmod 1777 /target/var/tmp
-
-zfs create -V $SIZESWAP -b "$(getconf PAGESIZE)" -o primarycache=metadata -o com.sun:auto-snapshot=false -o logbias=throughput -o sync=always $ZPOOL/swap
-# sometimes needed to wait for /dev/zvol/$ZPOOL/swap to appear
-sleep 2
-mkswap -f /dev/zvol/$ZPOOL/swap
+mkswap -f /dev/zvol/rpool/swap
 
 zpool status
 zfs list
 
-debootstrap --include=openssh-server,locales,linux-headers-amd64,linux-image-amd64,joe,rsync,sharutils,psmisc,htop,patch,less --components main,contrib,non-free $TARGETDIST /target http://deb.debian.org/debian/
+debootstrap --include=linux-headers-amd64,linux-image-amd64,openssh-server,acpid,mc,nano,sudo,bash-completion,net-tools --components main,contrib,non-free $VERSION_CODENAME /mnt http://deb.debian.org/debian
 
 test -n "$NEWHOST" || NEWHOST=debian-$(hostid)
-echo "$NEWHOST" >/target/etc/hostname
-sed -i "1s/^/127.0.1.1\t$NEWHOST\n/" /target/etc/hosts
+echo "$NEWHOST" > /mnt/etc/hostname
+sed -i "1s/^/127.0.1.1\t$NEWHOST\n/" /mnt/etc/hosts
 
 # Copy hostid as the target system will otherwise not be able to mount the misleadingly foreign file system
-cp -va /etc/hostid /target/etc/
+cp -va /etc/hostid /mnt/etc/
 
-cat << EOF >/target/etc/fstab
+cat << EOF > /mnt/etc/fstab
 # /etc/fstab: static file system information.
 #
 # Use 'blkid' to print the universally unique identifier for a
@@ -243,65 +212,92 @@ cat << EOF >/target/etc/fstab
 # that works even if disks are added and removed. See fstab(5).
 #
 # <file system>         <mount point>   <type>  <options>       <dump>  <pass>
-/dev/zvol/$ZPOOL/swap     none            swap    defaults        0       0
-$ZPOOL/var                /var            zfs     defaults        0       0
-$ZPOOL/var/tmp            /var/tmp        zfs     defaults        0       0
+/dev/zvol/rpool/swap     none            swap    defaults        0       0
 EOF
 
-mount --rbind /dev /target/dev
-mount --rbind /proc /target/proc
-mount --rbind /sys /target/sys
-ln -s /proc/mounts /target/etc/mtab
 
-perl -i -pe 's/# (en_US.UTF-8)/$1/' /target/etc/locale.gen
-echo 'LANG="en_US.UTF-8"' > /target/etc/default/locale
-chroot /target /usr/sbin/locale-gen
+mount --rbind /proc /mnt/proc
+mount --rbind /sys /mnt/sys
+mount --rbind /dev /mnt/dev
 
-chroot /target /usr/bin/apt-get update
+ln -s /proc/mounts /mnt/etc/mtab
 
-chroot /target /usr/bin/apt-get install --yes grub2-common $GRUBPKG zfs-initramfs zfs-dkms
-grep -q zfs /target/etc/default/grub || perl -i -pe 's/quiet/boot=zfs quiet/' /target/etc/default/grub 
-chroot /target /usr/sbin/update-grub
+# generate default locale
+#perl -i -pe 's/# (ru_RU.UTF-8)/$1/' /mnt/etc/locale.gen
+
+# set default locale
+#echo "LANG=ru_RU.UTF-8" > /mnt/etc/default/locale
+#echo "LANGUAGE=ru_RU:ru" >> /mnt/etc/default/locale
+
+#chroot /mnt /usr/sbin/locale-gen
+
+# copy contrib, non-free and backports repo lists from current system
+cp /etc/apt/sources.list.d/$VERSION_CODENAME-contrib-non-free.list /mnt/etc/apt/sources.list.d/$VERSION_CODENAME-contrib-non-free.list
+cp /etc/apt/sources.list.d/$VERSION_CODENAME-backports.list /mnt/etc/apt/sources.list.d/$VERSION_CODENAME-backports.list
+
+# copy backports override package source
+cp /etc/apt/preferences.d/990_zfs /mnt/etc/apt/preferences.d/990_zfs
+
+chroot /mnt /usr/bin/apt-get update
+
+chroot /mnt /usr/bin/apt-get install --yes grub2-common $GRUBPKG zfs-initramfs zfs-dkms
+
+echo REMAKE_INITRD=yes > /mnt/etc/dkms/zfs.conf
+
+grep -q zfs /mnt/etc/default/grub || perl -i -pe 's/quiet/boot=zfs quiet/' /mnt/etc/default/grub 
+chroot /mnt /usr/sbin/update-grub
 
 if [ "${GRUBPKG:0:8}" == "grub-efi" ]; then
 
 	# "This is arguably a mis-design in the UEFI specification - the ESP is a single point of failure on one disk."
 	# https://wiki.debian.org/UEFI#RAID_for_the_EFI_System_Partition
-	mkdir -pv /target/boot/efi
+	mkdir -pv /mnt/boot/efi
 	I=0
 	for EFIPARTITION in "${EFIPARTITIONS[@]}"; do
 		mkdosfs -F 32 -n EFI-$I $EFIPARTITION
-		mount $EFIPARTITION /target/boot/efi
-		chroot /target /usr/sbin/grub-install --target=x86_64-efi --no-uefi-secure-boot --efi-directory=/boot/efi --bootloader-id="Debian $TARGETDIST (RAID disk $I)" --recheck --no-floppy
+		mount $EFIPARTITION /mnt/boot/efi
+		chroot /mnt /usr/sbin/grub-install --target=x86_64-efi --no-uefi-secure-boot --efi-directory=/boot/efi --bootloader-id="Debian $VERSION_CODENAME (RAID disk $I)" --recheck --no-floppy
 		umount $EFIPARTITION
 		if [ $I -gt 0 ]; then
 			EFIBAKPART="#"
 		fi
-		echo "${EFIBAKPART}PARTUUID=$(blkid -s PARTUUID -o value $EFIPARTITION) /boot/efi vfat defaults 0 1" >> /target/etc/fstab
+		echo "${EFIBAKPART}PARTUUID=$(blkid -s PARTUUID -o value $EFIPARTITION) /boot/efi vfat defaults 0 1" >> /mnt/etc/fstab
 		((I++)) || true
 	done
-fi
-
-if [ -d /proc/acpi ]; then
-	chroot /target /usr/bin/apt-get install --yes acpi acpid
-	chroot /target service acpid stop
 fi
 
 ETHDEV=$(udevadm info -e | grep "ID_NET_NAME_ONBOARD=" | head -n1 | cut -d= -f2)
 test -n "$ETHDEV" || ETHDEV=$(udevadm info -e | grep "ID_NET_NAME_PATH=" | head -n1 | cut -d= -f2)
 test -n "$ETHDEV" || ETHDEV=enp0s1
-echo -e "\nauto $ETHDEV\niface $ETHDEV inet dhcp\n" >>/target/etc/network/interfaces
+echo -e "\nauto $ETHDEV\niface $ETHDEV inet dhcp\n" >> /mnt/etc/network/interfaces
 for DNS in $NEWDNS; do
-	echo -e "nameserver $DNS" >> /target/etc/resolv.conf
+	echo -e "nameserver $DNS" >> /mnt/etc/resolv.conf
 done
 
-chroot /target /usr/bin/passwd
-chroot /target /usr/sbin/dpkg-reconfigure tzdata
+# timezone Europe/Kiev 
+chroot /mnt /usr/bin/timedatectl set-timezone Europe/Kiev 
 
-sync
+# set root password
+chroot /mnt /usr/bin/passwd
 
-#zfs umount -a
+# copy zpool.cache
+cp /etc/zfs/zpool.cache /mnt/etc/zfs/zpool.cache
 
-## chroot /target /bin/bash --login
-## zpool import -R /target rpool
+# delete symlinc for mtab 
+unlink /mnt/etc/mtab
 
+# umount binding
+mount --make-rslave /mnt/dev && umount -R /mnt/dev
+mount --make-rslave /mnt/sys && umount -R /mnt/sys
+mount --make-rslave /mnt/proc && sleep 8 && umount -R /mnt/proc
+
+# set boot target
+zpool set bootfs=rpool/ROOT/debian rpool
+
+# umount all zfs partitions
+zfs umount -af
+
+# set mountpoints
+zfs set mountpoint=/ rpool/ROOT/debian
+zfs set mountpoint=/var rpool/var
+zfs set mountpoint=/tmp rpool/tmp
