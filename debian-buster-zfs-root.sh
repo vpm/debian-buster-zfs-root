@@ -3,13 +3,14 @@
 # debian-buster-zfs-root.sh
 #
 # Install Debian GNU/Linux 10 Buster to a native ZFS root filesystem
+#
 # (C) 2018-2020 Hajo Noerenberg
+#
+#
 # http://www.noerenberg.de/
 # https://github.com/hn/debian-buster-zfs-root
 #
-# Debian Buster Root on ZFS
-# https://openzfs.github.io/openzfs-docs/Getting%20Started/Debian/Debian%20Buster%20Root%20on%20ZFS.html
-# 
+#
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License version 3.0 as
 # published by the Free Software Foundation.
@@ -192,7 +193,7 @@ mkswap -f /dev/zvol/rpool/swap
 zpool status
 zfs list
 
-debootstrap --include=linux-headers-amd64,linux-image-amd64,openssh-server,acpid,mc,nano,sudo,bash-completion,net-tools --components main,contrib,non-free $VERSION_CODENAME /mnt http://deb.debian.org/debian
+debootstrap --include=linux-headers-amd64,linux-image-amd64,openssh-server,acpid,mc,nano,sudo,bash-completion,net-tools,console-setup --components main,contrib,non-free $VERSION_CODENAME /mnt http://deb.debian.org/debian
 
 test -n "$NEWHOST" || NEWHOST=debian-$(hostid)
 echo "$NEWHOST" > /mnt/etc/hostname
@@ -228,7 +229,7 @@ ln -s /proc/mounts /mnt/etc/mtab
 
 #chroot /mnt /usr/sbin/locale-gen
 
-# copy contrib, non-free and backports repo lists from current system
+
 cp /etc/apt/sources.list.d/$VERSION_CODENAME-contrib-non-free.list /mnt/etc/apt/sources.list.d/$VERSION_CODENAME-contrib-non-free.list
 cp /etc/apt/sources.list.d/$VERSION_CODENAME-backports.list /mnt/etc/apt/sources.list.d/$VERSION_CODENAME-backports.list
 
@@ -271,8 +272,8 @@ for DNS in $NEWDNS; do
 	echo -e "nameserver $DNS" >> /mnt/etc/resolv.conf
 done
 
-# timezone Europe/Kiev 
-chroot /mnt /usr/bin/timedatectl set-timezone Europe/Kiev 
+# set timezone to Europe/Kiev
+chroot /mnt /usr/bin/ln -s /usr/share/zoneinfo/Europe/Kiev /etc/localtime
 
 # set root password
 chroot /mnt /usr/bin/passwd
@@ -284,9 +285,9 @@ cp /etc/zfs/zpool.cache /mnt/etc/zfs/zpool.cache
 unlink /mnt/etc/mtab
 
 # umount binding
-mount --make-rslave /mnt/dev && umount -R /mnt/dev
-mount --make-rslave /mnt/sys && umount -R /mnt/sys
-mount --make-rslave /mnt/proc && sleep 8 && umount -R /mnt/proc
+mount --make-rslave /mnt/dev && sleep 3 && umount -R /mnt/dev && sleep 3
+mount --make-rslave /mnt/sys && sleep 3 && umount -R /mnt/sys && sleep 3
+mount --make-rslave /mnt/proc && sleep 3 && umount -R /mnt/proc
 
 # set boot target
 zpool set bootfs=rpool/ROOT/debian rpool
@@ -298,3 +299,7 @@ zfs umount -af
 zfs set mountpoint=/ rpool/ROOT/debian
 zfs set mountpoint=/var rpool/var
 zfs set mountpoint=/tmp rpool/tmp
+
+
+
+
