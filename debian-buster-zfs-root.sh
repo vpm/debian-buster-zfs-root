@@ -3,14 +3,13 @@
 # debian-buster-zfs-root.sh
 #
 # Install Debian GNU/Linux 10 Buster to a native ZFS root filesystem
-#
 # (C) 2018-2020 Hajo Noerenberg
-#
-#
 # http://www.noerenberg.de/
 # https://github.com/hn/debian-buster-zfs-root
 #
-#
+# Debian Buster Root on ZFS
+# https://openzfs.github.io/openzfs-docs/Getting%20Started/Debian/Debian%20Buster%20Root%20on%20ZFS.html
+# 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License version 3.0 as
 # published by the Free Software Foundation.
