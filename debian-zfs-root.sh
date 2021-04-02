@@ -1,6 +1,6 @@
 #!/bin/bash -e
 #
-# debian-buster-zfs-root.sh
+# debian-zfs-root.sh
 #
 # Install Debian GNU/Linux 10 Buster to a native ZFS root filesystem
 #
