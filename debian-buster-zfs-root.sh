@@ -4,12 +4,13 @@
 #
 # Install Debian GNU/Linux 10 Buster to a native ZFS root filesystem
 #
-# (C) 2018-2020 Hajo Noerenberg
 #
-#
-# http://www.noerenberg.de/
 # https://github.com/hn/debian-buster-zfs-root
+# Installs Debian GNU/Linux 10 Buster to a native ZFS root filesystem using a Debian Live CD.
+# The resulting system is a fully updateable debian system with no quirks or workarounds.
 #
+# https://openzfs.github.io/openzfs-docs/Getting%20Started/Debian/Debian%20Buster%20Root%20on%20ZFS.html
+# Debian Buster Root on ZFS
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License version 3.0 as
@@ -193,7 +194,7 @@ mkswap -f /dev/zvol/rpool/swap
 zpool status
 zfs list
 
-debootstrap --include=linux-headers-amd64,linux-image-amd64,openssh-server,acpid,mc,nano,sudo,bash-completion,net-tools,console-setup --components main,contrib,non-free $VERSION_CODENAME /mnt http://deb.debian.org/debian
+debootstrap --include=linux-headers-amd64,linux-image-amd64,openssh-server,acpid,mc,nano,sudo,bash-completion,net-tools,lsof,console-setup --components main,contrib,non-free $VERSION_CODENAME /mnt http://deb.debian.org/debian
 
 test -n "$NEWHOST" || NEWHOST=debian-$(hostid)
 echo "$NEWHOST" > /mnt/etc/hostname
@@ -214,7 +215,7 @@ cat << EOF > /mnt/etc/fstab
 EOF
 
 
-mount --rbind /proc /mnt/proc
+mount -t proc /proc /mnt/proc
 mount --rbind /sys /mnt/sys
 mount --rbind /dev /mnt/dev
 
@@ -229,9 +230,9 @@ ln -s /proc/mounts /mnt/etc/mtab
 
 #chroot /mnt /usr/sbin/locale-gen
 
-
-cp /etc/apt/sources.list.d/$VERSION_CODENAME-contrib-non-free.list /mnt/etc/apt/sources.list.d/$VERSION_CODENAME-contrib-non-free.list
-cp /etc/apt/sources.list.d/$VERSION_CODENAME-backports.list /mnt/etc/apt/sources.list.d/$VERSION_CODENAME-backports.list
+echo "deb http://deb.debian.org/debian/ $VERSION_CODENAME-updates main contrib non-free" >> /mnt/etc/apt/sources.list
+echo "deb http://security.debian.org/debian-security $VERSION_CODENAME/updates main contrib non-free" >> /mnt/etc/apt/sources.list
+echo "deb http://deb.debian.org/debian $VERSION_CODENAME-backports main contrib non-free" > /mnt/etc/apt/sources.list.d/$VERSION_CODENAME-backports.list
 
 # copy backports override package source
 cp /etc/apt/preferences.d/990_zfs /mnt/etc/apt/preferences.d/990_zfs
@@ -273,7 +274,7 @@ for DNS in $NEWDNS; do
 done
 
 # set timezone to Europe/Kiev
-chroot /mnt /usr/bin/ln -s /usr/share/zoneinfo/Europe/Kiev /etc/localtime
+chroot /mnt /usr/bin/ln -sf /usr/share/zoneinfo/Europe/Kiev /etc/localtime
 
 # set root password
 chroot /mnt /usr/bin/passwd
@@ -284,10 +285,10 @@ cp /etc/zfs/zpool.cache /mnt/etc/zfs/zpool.cache
 # delete symlinc for mtab 
 unlink /mnt/etc/mtab
 
-# umount binding
-mount --make-rslave /mnt/dev && sleep 3 && umount -R /mnt/dev && sleep 3
-mount --make-rslave /mnt/sys && sleep 3 && umount -R /mnt/sys && sleep 3
-mount --make-rslave /mnt/proc && sleep 3 && umount -R /mnt/proc
+# umount dev, sys, proc
+mount --make-rslave /mnt/dev &&  umount -R /mnt/dev
+mount --make-rslave /mnt/sys && umount -R /mnt/sys
+umount -Rf /mnt/proc
 
 # set boot target
 zpool set bootfs=rpool/ROOT/debian rpool
