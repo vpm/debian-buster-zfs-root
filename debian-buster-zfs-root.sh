@@ -184,8 +184,8 @@ zfs create -o mountpoint=/mnt/var rpool/var
 zfs create rpool/var/tmp && chmod 1777 /mnt/var/tmp
 zfs create rpool/var/log
 zfs create rpool/var/lib
-
 zfs create -V 2G -b "$(getconf PAGESIZE)" -o primarycache=metadata -o logbias=throughput -o sync=always rpool/swap
+
 # sometimes needed to wait for /dev/zvol/rpool/swap to appear
 sleep 3
 
@@ -194,7 +194,14 @@ mkswap -f /dev/zvol/rpool/swap
 zpool status
 zfs list
 
+# Install base system
 debootstrap --include=linux-headers-amd64,linux-image-amd64,openssh-server,acpid,mc,nano,sudo,bash-completion,net-tools,lsof,console-setup --components main,contrib,non-free $VERSION_CODENAME /mnt http://deb.debian.org/debian
+
+# tune zfs 
+echo "options zfs zfs_arc_min=1073741824" > /mnt/etc/modprobe.d/zfs.conf
+echo "options zfs zfs_arc_max=2147483648" >> /mnt/etc/modprobe.d/zfs.conf
+echo "options zfs zfs_arc_meta_limit=1610612736" >> /mnt/etc/modprobe.d/zfs.conf
+
 
 test -n "$NEWHOST" || NEWHOST=debian-$(hostid)
 echo "$NEWHOST" > /mnt/etc/hostname
@@ -214,7 +221,6 @@ cat << EOF > /mnt/etc/fstab
 /dev/zvol/rpool/swap     none            swap    defaults        0       0
 EOF
 
-
 mount -t proc /proc /mnt/proc
 mount --rbind /sys /mnt/sys && mount --make-rslave /mnt/sys
 mount --rbind /dev /mnt/dev && mount --make-rslave /mnt/dev
@@ -230,7 +236,7 @@ ln -s /proc/mounts /mnt/etc/mtab
 
 #chroot /mnt /usr/sbin/locale-gen
 
-echo "deb http://deb.debian.org/debian/ $VERSION_CODENAME-updates main contrib non-free" >> /mnt/etc/apt/sources.list
+echo "deb http://deb.debian.org/debian $VERSION_CODENAME-updates main contrib non-free" >> /mnt/etc/apt/sources.list
 echo "deb http://security.debian.org/debian-security $VERSION_CODENAME/updates main contrib non-free" >> /mnt/etc/apt/sources.list
 echo "deb http://deb.debian.org/debian $VERSION_CODENAME-backports main contrib non-free" > /mnt/etc/apt/sources.list.d/$VERSION_CODENAME-backports.list
 
@@ -272,6 +278,9 @@ echo -e "\nauto $ETHDEV\niface $ETHDEV inet dhcp\n" >> /mnt/etc/network/interfac
 for DNS in $NEWDNS; do
 	echo -e "nameserver $DNS" >> /mnt/etc/resolv.conf
 done
+
+# disable password promt for users from group sudo
+echo "%sudo ALL=(ALL:ALL) NOPASSWD:ALL" > /mnt/etc/sudoers.d/sudo
 
 # set timezone to Europe/Kiev
 chroot /mnt /usr/bin/ln -sf /usr/share/zoneinfo/Europe/Kiev /etc/localtime
