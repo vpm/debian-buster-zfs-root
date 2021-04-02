@@ -216,8 +216,8 @@ EOF
 
 
 mount -t proc /proc /mnt/proc
-mount --rbind /sys /mnt/sys
-mount --rbind /dev /mnt/dev
+mount --rbind /sys /mnt/sys && mount --make-rslave /mnt/sys
+mount --rbind /dev /mnt/dev && mount --make-rslave /mnt/dev
 
 ln -s /proc/mounts /mnt/etc/mtab
 
@@ -286,8 +286,8 @@ cp /etc/zfs/zpool.cache /mnt/etc/zfs/zpool.cache
 unlink /mnt/etc/mtab
 
 # umount dev, sys, proc
-mount --make-rslave /mnt/dev &&  umount -R /mnt/dev
-mount --make-rslave /mnt/sys && umount -R /mnt/sys
+umount -Rf /mnt/dev
+umount -Rf /mnt/sys
 umount -Rf /mnt/proc
 
 # set boot target
