@@ -160,8 +160,11 @@ python3-pyzfs pyzfs-doc spl spl-dkms zfs-dkms zfs-dracut zfs-initramfs zfs-test 
 echo "Pin: release n=$VERSION_CODENAME-backports" >> /etc/apt/preferences.d/990_zfs
 echo "Pin-Priority: 990" >> /etc/apt/preferences.d/990_zfs
 
+# 
+export DEBIAN_FRONTEND=noninteractive
+
 # install and build zfs kernel module
-apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install --yes zfs-dkms zfsutils-linux debootstrap gdisk dosfstools
+apt-get update && apt-get install --yes zfs-dkms zfsutils-linux debootstrap gdisk dosfstools
 
 modprobe zfs
 
@@ -179,7 +182,7 @@ fi
 
 # create root
 zfs create -p -o mountpoint=/mnt rpool/ROOT/debian
-zfs create -o mountpoint=/mnt/tmp -o setuid=off -o exec=off -o devices=off rpool/tmp && chmod 1777 /mnt/tmp
+zfs create -o mountpoint=/mnt/tmp -o setuid=off -o devices=off rpool/tmp && chmod 1777 /mnt/tmp
 zfs create -o mountpoint=/mnt/var rpool/var
 zfs create rpool/var/tmp && chmod 1777 /mnt/var/tmp
 zfs create rpool/var/log
@@ -195,7 +198,7 @@ zpool status
 zfs list
 
 # Install base system
-debootstrap --include=linux-headers-amd64,linux-image-amd64,openssh-server,acpid,mc,nano,sudo,bash-completion,net-tools,lsof,console-setup --components main,contrib,non-free $VERSION_CODENAME /mnt http://deb.debian.org/debian
+debootstrap --include=linux-headers-amd64,linux-image-amd64,openssh-server,locales,acpid,mc,nano,sudo,bash-completion,net-tools,lsof,console-setup --components main,contrib,non-free $VERSION_CODENAME /mnt http://deb.debian.org/debian
 
 # tune zfs 
 echo "options zfs zfs_arc_min=1073741824" > /mnt/etc/modprobe.d/zfs.conf
@@ -227,14 +230,19 @@ mount --rbind /dev /mnt/dev && mount --make-rslave /mnt/dev
 
 ln -s /proc/mounts /mnt/etc/mtab
 
-# generate default locale
-#perl -i -pe 's/# (ru_RU.UTF-8)/$1/' /mnt/etc/locale.gen
+# set UTF-8 for console
+sed -i s/'# en_US.UTF-8 UTF-8'/'en_US.UTF-8 UTF-8'/g /mnt/etc/locale.gen
 
 # set default locale
-#echo "LANG=ru_RU.UTF-8" > /mnt/etc/default/locale
-#echo "LANGUAGE=ru_RU:ru" >> /mnt/etc/default/locale
+echo "LANG=ru_RU.UTF-8" > /mnt/etc/default/locale
 
-#chroot /mnt /usr/sbin/locale-gen
+# generate default locale
+sed -i s/'# en_US.UTF-8 UTF-8'/'en_US.UTF-8 UTF-8'/g /mnt/etc/locale.gen
+sed -i s/'# ru_RU.UTF-8 UTF-8'/'ru_RU.UTF-8 UTF-8'/g /mnt/etc/locale.gen
+chroot /mnt /usr/sbin/locale-gen
+
+chroot /mnt /usr/bin/localedef -i en_US -f UTF-8 en_US.UTF-8
+chroot /mnt /usr/bin/localedef -i ru_RU -f UTF-8 ru_RU.UTF-8
 
 echo "deb http://deb.debian.org/debian $VERSION_CODENAME-updates main contrib non-free" >> /mnt/etc/apt/sources.list
 echo "deb http://security.debian.org/debian-security $VERSION_CODENAME/updates main contrib non-free" >> /mnt/etc/apt/sources.list
@@ -244,7 +252,6 @@ echo "deb http://deb.debian.org/debian $VERSION_CODENAME-backports main contrib 
 cp /etc/apt/preferences.d/990_zfs /mnt/etc/apt/preferences.d/990_zfs
 
 chroot /mnt /usr/bin/apt-get update
-
 chroot /mnt /usr/bin/apt-get install --yes grub2-common $GRUBPKG zfs-initramfs zfs-dkms
 
 echo REMAKE_INITRD=yes > /mnt/etc/dkms/zfs.conf
