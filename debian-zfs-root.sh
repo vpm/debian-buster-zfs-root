@@ -1,6 +1,6 @@
 #!/bin/bash -e
 #
-# debian-zfs-root.sh
+# debian-buster-zfs-root.sh
 #
 # Install Debian GNU/Linux 10 Buster to a native ZFS root filesystem
 #
@@ -181,7 +181,7 @@ if [ $? -ne 0 ]; then
 fi
 
 # create root
-zfs create -p -o mountpoint=/mnt rpool/ROOT/debian
+zfs create -p -o mountpoint=/mnt rpool/ROOT/default
 zfs create -o mountpoint=/mnt/tmp -o setuid=off -o devices=off rpool/tmp && chmod 1777 /mnt/tmp
 zfs create -o mountpoint=/mnt/var rpool/var
 zfs create rpool/var/tmp && chmod 1777 /mnt/var/tmp
@@ -231,7 +231,7 @@ mount --rbind /dev /mnt/dev && mount --make-rslave /mnt/dev
 ln -s /proc/mounts /mnt/etc/mtab
 
 # set UTF-8 for console
-sed -i s/'# en_US.UTF-8 UTF-8'/'en_US.UTF-8 UTF-8'/g /mnt/etc/locale.gen
+sed -i s/'CHARMAP="ISO-8859-15"'/'CHARMAP="UTF-8"'/g /mnt/etc/default/console-setup
 
 # set default locale
 echo "LANG=ru_RU.UTF-8" > /mnt/etc/default/locale
@@ -307,16 +307,12 @@ umount -Rf /mnt/sys
 umount -Rf /mnt/proc
 
 # set boot target
-zpool set bootfs=rpool/ROOT/debian rpool
+zpool set bootfs=rpool/ROOT/default rpool
 
 # umount all zfs partitions
 zfs umount -af
 
 # set mountpoints
-zfs set mountpoint=/ rpool/ROOT/debian
+zfs set mountpoint=/ rpool/ROOT/default
 zfs set mountpoint=/var rpool/var
 zfs set mountpoint=/tmp rpool/tmp
-
-
-
-
