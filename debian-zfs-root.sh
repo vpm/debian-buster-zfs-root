@@ -35,7 +35,15 @@ NEWHOST=${TARGET_HOSTNAME}
 NEWDNS=${TARGET_DNS:-8.8.8.8 8.8.4.4}
 
 ### import os-release
-. /etc/os-release
+DEBRELEASE=$(head -n1 /etc/debian_version)
+case $DEBRELEASE in
+	10*)
+		;;
+	*)
+		echo "Unsupported Debian Live CD release" >&2
+		exit 1
+		;;
+esac
 
 ### User settings
 
