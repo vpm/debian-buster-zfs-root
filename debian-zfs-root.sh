@@ -161,17 +161,17 @@ for DISK in "${DISKS[@]}"; do
 done
 
 # add contrib non-free and backports top apt lists
-echo "deb http://deb.debian.org/debian $VERSION_CODENAME contrib non-free" > /etc/apt/sources.list.d/$VERSION_CODENAME-contrib-non-free.list
-echo "deb http://deb.debian.org/debian $VERSION_CODENAME-backports main contrib non-free" > /etc/apt/sources.list.d/$VERSION_CODENAME-backports.list
+echo "deb http://deb.debian.org/debian buster contrib non-free" > /etc/apt/sources.list.d/buster-contrib-non-free.list
+echo "deb http://deb.debian.org/debian buster-backports main contrib non-free" > /etc/apt/sources.list.d/buster-backports.list
 echo "Package: libnvpair3linux libpam-zfs libuutil1linux libuutil3linux libzfs4linux libzfsbootenv1linux libzfslinux-dev libzpool4linux python3-pyzfs pyzfs-doc spl spl-dkms zfs-dkms zfs-dracut zfs-initramfs zfs-test zfs-zed zfsutils-linux" > /etc/apt/preferences.d/990
-echo "Pin: release n=$VERSION_CODENAME-backports" >> /etc/apt/preferences.d/990
+echo "Pin: release n=buster-backports" >> /etc/apt/preferences.d/990
 echo "Pin-Priority: 990" >> /etc/apt/preferences.d/990
 
 # 
 export DEBIAN_FRONTEND=noninteractive
 
 # install and build zfs kernel module
-apt-get update && apt-get install --yes -t $VERSION_CODENAME-backports zfs-dkms debootstrap gdisk dosfstools
+apt-get update && apt-get install --yes -t buster-backports zfs-dkms debootstrap gdisk dosfstools
 
 modprobe zfs
 
@@ -180,7 +180,7 @@ if [ $? -ne 0 ]; then
 	exit 1
 fi
 
-apt-get install --yes -t $VERSION_CODENAME-backports zfsutils-linux
+apt-get install --yes -t buster-backports zfsutils-linux
 
 zpool create -f -o ashift=12 -O atime=off -O mountpoint=none rpool $RAIDDEF
 
@@ -207,7 +207,7 @@ zpool status
 zfs list
 
 # Install base system
-debootstrap --include=linux-headers-amd64,linux-image-amd64,openssh-server,locales,acpid,mc,nano,sudo,bash-completion,net-tools,lsof,console-setup --components main,contrib,non-free $VERSION_CODENAME /mnt http://deb.debian.org/debian
+debootstrap --include=linux-headers-amd64,linux-image-amd64,openssh-server,locales,acpid,mc,nano,sudo,bash-completion,net-tools,lsof,console-setup --components main,contrib,non-free buster /mnt http://deb.debian.org/debian
 
 # tune zfs 
 echo "options zfs zfs_arc_min=1073741824" > /mnt/etc/modprobe.d/zfs.conf
@@ -253,15 +253,15 @@ chroot /mnt locale-gen
 chroot /mnt localedef -i en_US -f UTF-8 en_US.UTF-8
 chroot /mnt localedef -i ru_RU -f UTF-8 ru_RU.UTF-8
 
-echo "deb http://deb.debian.org/debian $VERSION_CODENAME-updates main contrib non-free" >> /mnt/etc/apt/sources.list
-echo "deb http://security.debian.org/debian-security $VERSION_CODENAME/updates main contrib non-free" >> /mnt/etc/apt/sources.list
-echo "deb http://deb.debian.org/debian $VERSION_CODENAME-backports main contrib non-free" > /mnt/etc/apt/sources.list.d/$VERSION_CODENAME-backports.list
+echo "deb http://deb.debian.org/debian buster-updates main contrib non-free" >> /mnt/etc/apt/sources.list
+echo "deb http://security.debian.org/debian-security buster/updates main contrib non-free" >> /mnt/etc/apt/sources.list
+echo "deb http://deb.debian.org/debian buster-backports main contrib non-free" > /mnt/etc/apt/sources.list.d/buster-backports.list
 
 # copy backports override package source
 cp /etc/apt/preferences.d/990 /mnt/etc/apt/preferences.d/990
 
 chroot /mnt apt-get update
-chroot /mnt apt-get install --yes -t $VERSION_CODENAME-backports zfs-dkms zfsutils-linux grub2-common $GRUBPKG zfs-initramfs
+chroot /mnt apt-get install --yes -t buster-backports zfs-dkms zfsutils-linux grub2-common $GRUBPKG zfs-initramfs
 
 echo REMAKE_INITRD=yes > /mnt/etc/dkms/zfs.conf
 
@@ -280,7 +280,7 @@ if [ "${GRUBPKG:0:8}" == "grub-efi" ]; then
 	for EFIPARTITION in "${EFIPARTITIONS[@]}"; do
 		mkdosfs -F 32 -n EFI-$I $EFIPARTITION
 		mount $EFIPARTITION /mnt/boot/efi
-		chroot /mnt /usr/sbin/grub-install --target=x86_64-efi --no-uefi-secure-boot --efi-directory=/boot/efi --bootloader-id="Debian $VERSION_CODENAME (RAID disk $I)" --recheck --no-floppy
+		chroot /mnt /usr/sbin/grub-install --target=x86_64-efi --no-uefi-secure-boot --efi-directory=/boot/efi --bootloader-id="Debian buster (RAID disk $I)" --recheck --no-floppy
 		umount $EFIPARTITION
 		if [ $I -gt 0 ]; then
 			EFIBAKPART="#"
