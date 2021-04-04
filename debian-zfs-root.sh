@@ -34,7 +34,7 @@ PARTZFS=${TARGET_PARTZFS:-3}
 NEWHOST=${TARGET_HOSTNAME}
 NEWDNS=${TARGET_DNS:-8.8.8.8 8.8.4.4}
 
-### import os-release
+# check release
 DEBRELEASE=$(head -n1 /etc/debian_version)
 case $DEBRELEASE in
 	10*)
@@ -163,16 +163,15 @@ done
 # add contrib non-free and backports top apt lists
 echo "deb http://deb.debian.org/debian $VERSION_CODENAME contrib non-free" > /etc/apt/sources.list.d/$VERSION_CODENAME-contrib-non-free.list
 echo "deb http://deb.debian.org/debian $VERSION_CODENAME-backports main contrib non-free" > /etc/apt/sources.list.d/$VERSION_CODENAME-backports.list
-echo "Package: libnvpair3linux libpam-zfs libuutil3linux libzfs4linux libzfsbootenv1linux libzfslinux-dev libzpool4linux \
-python3-pyzfs pyzfs-doc spl spl-dkms zfs-dkms zfs-dracut zfs-initramfs zfs-test zfs-zed zfsutils-linux" > /etc/apt/preferences.d/990_zfs
-echo "Pin: release n=$VERSION_CODENAME-backports" >> /etc/apt/preferences.d/990_zfs
-echo "Pin-Priority: 990" >> /etc/apt/preferences.d/990_zfs
+echo "Package: libnvpair3linux libpam-zfs libuutil1linux libuutil3linux libzfs4linux libzfsbootenv1linux libzfslinux-dev libzpool4linux python3-pyzfs pyzfs-doc spl spl-dkms zfs-dkms zfs-dracut zfs-initramfs zfs-test zfs-zed zfsutils-linux" > /etc/apt/preferences.d/990
+echo "Pin: release n=$VERSION_CODENAME-backports" >> /etc/apt/preferences.d/990
+echo "Pin-Priority: 990" >> /etc/apt/preferences.d/990
 
 # 
 export DEBIAN_FRONTEND=noninteractive
 
 # install and build zfs kernel module
-apt-get update && apt-get install --yes zfs-dkms zfsutils-linux debootstrap gdisk dosfstools
+apt-get update && apt-get install --yes -t $VERSION_CODENAME-backports zfs-dkms debootstrap gdisk dosfstools
 
 modprobe zfs
 
@@ -180,6 +179,8 @@ if [ $? -ne 0 ]; then
 	echo "Unable to load ZFS kernel module" >&2
 	exit 1
 fi
+
+apt-get install --yes -t $VERSION_CODENAME-backports zfsutils-linux
 
 zpool create -f -o ashift=12 -O atime=off -O mountpoint=none rpool $RAIDDEF
 
@@ -247,25 +248,28 @@ echo "LANG=ru_RU.UTF-8" > /mnt/etc/default/locale
 # generate default locale
 sed -i s/'# en_US.UTF-8 UTF-8'/'en_US.UTF-8 UTF-8'/g /mnt/etc/locale.gen
 sed -i s/'# ru_RU.UTF-8 UTF-8'/'ru_RU.UTF-8 UTF-8'/g /mnt/etc/locale.gen
-chroot /mnt /usr/sbin/locale-gen
+chroot /mnt locale-gen
 
-chroot /mnt /usr/bin/localedef -i en_US -f UTF-8 en_US.UTF-8
-chroot /mnt /usr/bin/localedef -i ru_RU -f UTF-8 ru_RU.UTF-8
+chroot /mnt localedef -i en_US -f UTF-8 en_US.UTF-8
+chroot /mnt localedef -i ru_RU -f UTF-8 ru_RU.UTF-8
 
 echo "deb http://deb.debian.org/debian $VERSION_CODENAME-updates main contrib non-free" >> /mnt/etc/apt/sources.list
 echo "deb http://security.debian.org/debian-security $VERSION_CODENAME/updates main contrib non-free" >> /mnt/etc/apt/sources.list
 echo "deb http://deb.debian.org/debian $VERSION_CODENAME-backports main contrib non-free" > /mnt/etc/apt/sources.list.d/$VERSION_CODENAME-backports.list
 
 # copy backports override package source
-cp /etc/apt/preferences.d/990_zfs /mnt/etc/apt/preferences.d/990_zfs
+cp /etc/apt/preferences.d/990 /mnt/etc/apt/preferences.d/990
 
-chroot /mnt /usr/bin/apt-get update
-chroot /mnt /usr/bin/apt-get install --yes grub2-common $GRUBPKG zfs-initramfs zfs-dkms
+chroot /mnt apt-get update
+chroot /mnt apt-get install --yes -t $VERSION_CODENAME-backports zfs-dkms zfsutils-linux grub2-common $GRUBPKG zfs-initramfs
 
 echo REMAKE_INITRD=yes > /mnt/etc/dkms/zfs.conf
 
-grep -q zfs /mnt/etc/default/grub || perl -i -pe 's/quiet/boot=zfs quiet/' /mnt/etc/default/grub 
-chroot /mnt /usr/sbin/update-grub
+
+sed -i s:'GRUB_CMDLINE_LINUX=""':'GRUB_CMDLINE_LINUX="root=ZFS=rpool/ROOT/default boot=zfs"':g /mnt/etc/default/grub
+
+
+chroot /mnt update-grub
 
 if [ "${GRUBPKG:0:8}" == "grub-efi" ]; then
 
@@ -298,10 +302,10 @@ done
 echo "%sudo ALL=(ALL:ALL) NOPASSWD:ALL" > /mnt/etc/sudoers.d/sudo
 
 # set timezone to Europe/Kiev
-chroot /mnt /usr/bin/ln -sf /usr/share/zoneinfo/Europe/Kiev /etc/localtime
+chroot /mnt ln -sf /usr/share/zoneinfo/Europe/Kiev /etc/localtime
 
 # set root password
-chroot /mnt /usr/bin/passwd
+chroot /mnt passwd
 
 # copy zpool.cache
 cp /etc/zfs/zpool.cache /mnt/etc/zfs/zpool.cache
@@ -324,3 +328,7 @@ zfs umount -af
 zfs set mountpoint=/ rpool/ROOT/default
 zfs set mountpoint=/var rpool/var
 zfs set mountpoint=/tmp rpool/tmp
+
+
+
+
