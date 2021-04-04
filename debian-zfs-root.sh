@@ -265,7 +265,7 @@ chroot /mnt apt-get install --yes -t buster-backports zfs-dkms zfsutils-linux gr
 
 echo REMAKE_INITRD=yes > /mnt/etc/dkms/zfs.conf
 
-sed -i s:'GRUB_CMDLINE_LINUX_DEFAULT="quiet"':'GRUB_CMDLINE_LINUX_DEFAULT="zfs quiet"':g /mnt/etc/default/grub
+sed -i s/'GRUB_CMDLINE_LINUX=""'/'GRUB_CMDLINE_LINUX="boot=zfs"'/g /mnt/etc/default/grub
 
 chroot /mnt update-grub
 
