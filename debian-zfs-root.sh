@@ -217,7 +217,6 @@ echo "options zfs zfs_arc_meta_limit=1610612736" >> /mnt/etc/modprobe.d/zfs.conf
 
 test -n "$NEWHOST" || NEWHOST=debian-$(hostid)
 echo "$NEWHOST" > /mnt/etc/hostname
-sed -i "1s/^/127.0.1.1\t$NEWHOST\n/" /mnt/etc/hosts
 
 # Copy hostid as the target system will otherwise not be able to mount the misleadingly foreign file system
 cp -va /etc/hostid /mnt/etc/
