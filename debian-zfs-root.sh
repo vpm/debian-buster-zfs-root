@@ -155,9 +155,9 @@ for DISK in "${DISKS[@]}"; do
 
 	sgdisk --zap-all $DISK
 
-	sgdisk -a1 -n$PARTBIOS:34:2047   -t$PARTBIOS:EF02 \
-	           -n$PARTEFI:2048:+512M -t$PARTEFI:EF00 \
-                   -n$PARTZFS:0:0        -t$PARTZFS:BF01 $DISK
+	sgdisk --set-alignment=4096 -n $PARTBIOS:0:+1M -t$PARTBIOS:EF02 \
+	           -n$PARTEFI:0:+1G -t$PARTEFI:EF00 \
+                   -n$PARTZFS:0:0 -t$PARTZFS:BF00 $DISK
 done
 
 # add contrib non-free and backports top apt lists
