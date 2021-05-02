@@ -163,7 +163,7 @@ done
 # add contrib non-free and backports top apt lists
 echo "deb http://deb.debian.org/debian buster contrib non-free" > /etc/apt/sources.list.d/buster-contrib-non-free.list
 echo "deb http://deb.debian.org/debian buster-backports main contrib non-free" > /etc/apt/sources.list.d/buster-backports.list
-echo "Package: libnvpair3linux libpam-zfs libuutil1linux libuutil3linux libzfs4linux libzfsbootenv1linux libzfslinux-dev libzpool4linux python3-pyzfs pyzfs-doc spl spl-dkms zfs-dkms zfs-dracut zfs-initramfs zfs-test zfs-zed zfsutils-linux" > /etc/apt/preferences.d/990
+echo "Package: *" > /etc/apt/preferences.d/990
 echo "Pin: release n=buster-backports" >> /etc/apt/preferences.d/990
 echo "Pin-Priority: 990" >> /etc/apt/preferences.d/990
 
