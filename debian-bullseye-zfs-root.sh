@@ -2,7 +2,7 @@
 #
 # debian-buster-zfs-root.sh
 #
-# Install Debian GNU/Linux 10 Buster to a native ZFS root filesystem
+# Install Debian GNU/Linux 11 Bullseye to a native ZFS root filesystem UEFI system 
 #
 #
 # https://github.com/hn/debian-buster-zfs-root
