@@ -243,7 +243,6 @@ chroot /mnt localedef -i en_US -f UTF-8 en_US.UTF-8
 chroot /mnt localedef -i ru_RU -f UTF-8 ru_RU.UTF-8
 
 echo "deb http://deb.debian.org/debian bullseye-updates main contrib non-free" >> /mnt/etc/apt/sources.list
-echo "deb http://security.debian.org/debian-security bullseye-updates main contrib non-free" >> /mnt/etc/apt/sources.list
 
 chroot /mnt apt-get update
 chroot /mnt apt-get install --yes zfs-dkms zfsutils-linux grub2-common $GRUBPKG zfs-initramfs
