@@ -37,7 +37,7 @@ NEWDNS=${TARGET_DNS:-8.8.8.8 8.8.4.4}
 # check release
 DEBRELEASE=$(head -n1 /etc/debian_version)
 case $DEBRELEASE in
-	10*)
+	11*)
 		;;
 	*)
 		echo "Unsupported Debian Live CD release" >&2
@@ -161,17 +161,13 @@ for DISK in "${DISKS[@]}"; do
 done
 
 # add contrib non-free and backports top apt lists
-echo "deb http://deb.debian.org/debian buster contrib non-free" > /etc/apt/sources.list.d/buster-contrib-non-free.list
-echo "deb http://deb.debian.org/debian buster-backports main contrib non-free" > /etc/apt/sources.list.d/buster-backports.list
-echo "Package: *" > /etc/apt/preferences.d/990
-echo "Pin: release n=buster-backports" >> /etc/apt/preferences.d/990
-echo "Pin-Priority: 990" >> /etc/apt/preferences.d/990
+echo "deb http://deb.debian.org/debian bullseye contrib non-free" > /etc/apt/sources.list.d/bullseye-contrib-non-free.list
 
 # 
 export DEBIAN_FRONTEND=noninteractive
 
 # install and build zfs kernel module
-apt-get update && apt-get install --yes -t buster-backports zfs-dkms debootstrap gdisk dosfstools
+apt-get update && apt-get install --yes zfs-dkms debootstrap gdisk dosfstools
 
 modprobe zfs
 
@@ -180,7 +176,7 @@ if [ $? -ne 0 ]; then
 	exit 1
 fi
 
-apt-get install --yes -t buster-backports zfsutils-linux
+apt-get install --yes zfsutils-linux
 
 zpool create -f -o ashift=12 -O atime=off -O mountpoint=none rpool $RAIDDEF
 
@@ -208,12 +204,6 @@ zfs list
 
 # Install base system
 debootstrap --include=linux-headers-amd64,linux-image-amd64,openssh-server,locales,acpid,mc,nano,sudo,bash-completion,net-tools,lsof,console-setup --components main,contrib,non-free buster /mnt http://deb.debian.org/debian
-
-# tune zfs 
-echo "options zfs zfs_arc_min=1073741824" > /mnt/etc/modprobe.d/zfs.conf
-echo "options zfs zfs_arc_max=2147483648" >> /mnt/etc/modprobe.d/zfs.conf
-echo "options zfs zfs_arc_meta_limit=1610612736" >> /mnt/etc/modprobe.d/zfs.conf
-
 
 test -n "$NEWHOST" || NEWHOST=debian-$(hostid)
 echo "$NEWHOST" > /mnt/etc/hostname
@@ -252,15 +242,11 @@ chroot /mnt locale-gen
 chroot /mnt localedef -i en_US -f UTF-8 en_US.UTF-8
 chroot /mnt localedef -i ru_RU -f UTF-8 ru_RU.UTF-8
 
-echo "deb http://deb.debian.org/debian buster-updates main contrib non-free" >> /mnt/etc/apt/sources.list
-echo "deb http://security.debian.org/debian-security buster/updates main contrib non-free" >> /mnt/etc/apt/sources.list
-echo "deb http://deb.debian.org/debian buster-backports main contrib non-free" > /mnt/etc/apt/sources.list.d/buster-backports.list
-
-# copy backports override package source
-cp /etc/apt/preferences.d/990 /mnt/etc/apt/preferences.d/990
+echo "deb http://deb.debian.org/debian bullseye-updates main contrib non-free" >> /mnt/etc/apt/sources.list
+echo "deb http://security.debian.org/debian-security bullseye-updates main contrib non-free" >> /mnt/etc/apt/sources.list
 
 chroot /mnt apt-get update
-chroot /mnt apt-get install --yes -t buster-backports zfs-dkms zfsutils-linux grub2-common $GRUBPKG zfs-initramfs
+chroot /mnt apt-get install --yes zfs-dkms zfsutils-linux grub2-common $GRUBPKG zfs-initramfs
 
 echo REMAKE_INITRD=yes > /mnt/etc/dkms/zfs.conf
 
