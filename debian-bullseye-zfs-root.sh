@@ -203,7 +203,7 @@ zpool status
 zfs list
 
 # Install base system
-debootstrap --include=linux-headers-amd64,linux-image-amd64,openssh-server,locales,acpid,mc,nano,sudo,bash-completion,net-tools,lsof,console-setup --components main,contrib,non-free buster /mnt http://deb.debian.org/debian
+debootstrap --include=linux-headers-amd64,linux-image-amd64,openssh-server,locales,acpid,mc,nano,sudo,bash-completion,net-tools,lsof,console-setup --components main,contrib,non-free bullseye /mnt http://deb.debian.org/debian
 
 test -n "$NEWHOST" || NEWHOST=debian-$(hostid)
 echo "$NEWHOST" > /mnt/etc/hostname
