@@ -235,11 +235,9 @@ sed -i s/'CHARMAP="ISO-8859-15"'/'CHARMAP="UTF-8"'/g /mnt/etc/default/console-se
 echo "LANG=ru_RU.UTF-8" > /mnt/etc/default/locale
 
 # generate default locale
-sed -i s/'# en_US.UTF-8 UTF-8'/'en_US.UTF-8 UTF-8'/g /mnt/etc/locale.gen
 sed -i s/'# ru_RU.UTF-8 UTF-8'/'ru_RU.UTF-8 UTF-8'/g /mnt/etc/locale.gen
 chroot /mnt locale-gen
 
-chroot /mnt localedef -i en_US -f UTF-8 en_US.UTF-8
 chroot /mnt localedef -i ru_RU -f UTF-8 ru_RU.UTF-8
 
 echo "deb http://deb.debian.org/debian bullseye-updates main contrib non-free" >> /mnt/etc/apt/sources.list
