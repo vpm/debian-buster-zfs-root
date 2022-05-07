@@ -1,6 +1,6 @@
 #!/bin/bash -e
 #
-# debian-buster-zfs-root.sh
+# debian-bullseye-zfs-root.sh
 #
 # Install Debian GNU/Linux 11 Bullseye to a native ZFS root filesystem UEFI system 
 #
