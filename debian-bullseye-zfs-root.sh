@@ -9,7 +9,7 @@
 # Installs Debian GNU/Linux 10 Buster to a native ZFS root filesystem using a Debian Live CD.
 # The resulting system is a fully updateable debian system with no quirks or workarounds.
 #
-# https://openzfs.github.io/openzfs-docs/Getting%20Started/Debian/Debian%20Buster%20Root%20on%20ZFS.html
+# https://openzfs.github.io/openzfs-docs/Getting%20Started/Debian/Debian%20Bullseye%20Root%20on%20ZFS.html
 # Debian Buster Root on ZFS
 #
 # This program is free software: you can redistribute it and/or modify
