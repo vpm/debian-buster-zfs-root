@@ -164,6 +164,12 @@ done
 echo "deb http://deb.debian.org/debian bullseye contrib non-free" > /etc/apt/sources.list.d/bullseye-contrib-non-free.list
 echo "deb http://deb.debian.org/debian bullseye-backports main contrib non-free" > /etc/apt/sources.list.d/bullseye-backports-main-contrib-non-free.list
 
+cat << EOF | sudo tee /etc/apt/preferences.d/500_bullseye-backports_default
+Package: *
+Pin: release n=bullseye-backports
+Pin-Priority: 500
+EOF
+
 # 
 export DEBIAN_FRONTEND=noninteractive
 
