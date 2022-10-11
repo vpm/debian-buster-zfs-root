@@ -1,4 +1,4 @@
-# debian-buster-zfs-root
+# debian-bullseye-zfs-root
 Installs Debian GNU/Linux 11 Bullseye to a native ZFS root filesystem using a [Debian Live CD](https://www.debian.org/CD/live/). The resulting system is a fully updateable debian system with no quirks or workarounds.
 
 # Usage
