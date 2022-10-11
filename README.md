@@ -1,11 +1,7 @@
 # debian-buster-zfs-root
-Installs Debian GNU/Linux 10 Buster to a native ZFS root filesystem using a [Debian Live CD](https://www.debian.org/CD/live/). The resulting system is a fully updateable debian system with no quirks or workarounds.
+Installs Debian GNU/Linux 11 Bullseye to a native ZFS root filesystem using a [Debian Live CD](https://www.debian.org/CD/live/). The resulting system is a fully updateable debian system with no quirks or workarounds.
 
-## Warning
-
-Due to [problems with grub-efi-amd64-signed](https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=925309) UEFI secure boot has been disabled until a proper solution is available ([SoerenBusse](https://github.com/hn/debian-buster-zfs-root/issues/3#issuecomment-537257899) has created [a fix](https://github.com/hn/debian-buster-zfs-root/pull/4) which has not been reviewd yet).
-
-## Usage
+# Usage
 
 1. Boot [Debian Live CD](https://www.debian.org/CD/live/)
 1. Login (user: `user`, password: `live`) and become root
