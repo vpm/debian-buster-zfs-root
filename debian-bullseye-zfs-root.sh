@@ -162,6 +162,7 @@ done
 
 # add contrib non-free and backports top apt lists
 echo "deb http://deb.debian.org/debian bullseye contrib non-free" > /etc/apt/sources.list.d/bullseye-contrib-non-free.list
+echo "deb http://deb.debian.org/debian bullseye-backports main contrib non-free" > /etc/apt/sources.list.d/bullseye-backports-main-contrib-non-free.list
 
 # 
 export DEBIAN_FRONTEND=noninteractive
