@@ -10,7 +10,7 @@
 # The resulting system is a fully updateable debian system with no quirks or workarounds.
 #
 # https://openzfs.github.io/openzfs-docs/Getting%20Started/Debian/Debian%20Bullseye%20Root%20on%20ZFS.html
-# Debian Buster Root on ZFS
+# Debian Bullseye Root on ZFS
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License version 3.0 as
